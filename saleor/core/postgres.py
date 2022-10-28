@@ -7,7 +7,8 @@ from django.contrib.postgres.search import (
     SearchVector,
     SearchVectorCombinable,
 )
-from django.db.models import Expression
+from django.db.models import CharField, Expression, TextField, Value
+from django.db.models.functions import Cast, Coalesce
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +43,45 @@ class NoValidationSearchVector(SearchVector, NoValidationSearchVectorCombinable)
     This class is only safe to use with expressions that do not contain aggregation
     and/or over clause.
     """
+
+    weight: Optional[str]
+
+    def as_sql(self, compiler, connection, function=None, template=None):
+        # Override the logic as Django insists on inlining params in SQL which breaks on
+        # strings that contain the "%" character.
+        clone = self.copy()
+        clone.set_source_expressions(
+            [
+                Coalesce(
+                    expression
+                    if isinstance(expression.output_field, (CharField, TextField))
+                    else Cast(expression, TextField()),
+                    Value(""),
+                )
+                for expression in clone.get_source_expressions()
+            ]
+        )
+        config_sql = None
+        config_params = []
+        if template is None:
+            if clone.config:
+                config_sql, config_params = compiler.compile(clone.config)
+                template = "%(function)s(%(config)s, %(expressions)s)"
+            else:
+                template = clone.template
+        sql, params = super(SearchVector, clone).as_sql(
+            compiler,
+            connection,
+            function=function,
+            template=template,
+            config=config_sql,
+        )
+        extra_params = []
+        if clone.weight:
+            weight_sql, extra_params = compiler.compile(clone.weight)
+            sql = "setweight({}, {})".format(sql, weight_sql)
+
+        return sql, config_params + params + extra_params
 
 
 class FlatConcat(Expression):
