@@ -25,6 +25,7 @@ from ...core.doc_category import (
 from ..descriptions import (
     ADDED_IN_36,
     ADDED_IN_312,
+    ADDED_IN_313,
     DEPRECATED_IN_3X_FIELD,
     PREVIEW_FEATURE,
 )
@@ -41,6 +42,7 @@ from ..enums import (
     ExternalNotificationTriggerErrorCode,
     GiftCardErrorCode,
     GiftCardSettingsErrorCode,
+    IconThumbnailFormatEnum,
     InvoiceErrorCode,
     JobStatusEnum,
     LanguageCodeEnum,
@@ -780,6 +782,16 @@ class ThumbnailField(graphene.Field):
         kwargs["size"] = self.size
         kwargs["format"] = self.format
         super().__init__(of_type, *args, **kwargs)
+
+
+class IconThumbnailField(ThumbnailField):
+    format = IconThumbnailFormatEnum(
+        default_value="ORIGINAL",
+        description=(
+            "The format of the image. When not provided, format of the original "
+            "image will be used." + ADDED_IN_313 + PREVIEW_FEATURE
+        ),
+    )
 
 
 class MediaInput(graphene.InputObjectType):
