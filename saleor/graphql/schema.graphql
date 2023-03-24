@@ -2912,6 +2912,7 @@ type AppBrandLogo @doc(category: "Apps") {
 enum IconThumbnailFormatEnum {
   ORIGINAL
   WEBP
+  PNG
 }
 
 type EventDeliveryCountableConnection {
