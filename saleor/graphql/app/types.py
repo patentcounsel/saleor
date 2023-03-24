@@ -261,7 +261,6 @@ class AppManifestBrandLogo(BaseObjectType):
         thumbnail, thumbnail_format = processed_image.create_thumbnail()
         mimetype = PIL_IDENTIFIER_TO_MIME_TYPE[thumbnail_format]
 
-        thumbnail.seek(0)
         thumbnail_str = base64.b64encode(thumbnail.read()).decode()
         return f"data:{mimetype};base64,{thumbnail_str}"
 

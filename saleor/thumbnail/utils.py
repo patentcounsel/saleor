@@ -237,6 +237,7 @@ class ProcessedImage:
             (self.size, self.size),
         )
         image.save(image_file, **save_kwargs)
+        image_file.seek(0)
         return image_file, save_kwargs["format"]
 
 
