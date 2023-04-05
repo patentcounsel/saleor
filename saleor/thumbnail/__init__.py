@@ -18,6 +18,8 @@ class ThumbnailFormat:
     ]
 
 
+ALLOWED_THUMBNAIL_FORMATS = {ThumbnailFormat.AVIF, ThumbnailFormat.WEBP}
+
 # PIL-supported file formats as found here:
 # https://infohost.nmt.edu/tcc/help/pubs/pil/formats.html
 # {mime type: PIL Identifier}
@@ -55,3 +57,6 @@ class IconThumbnailFormat:
         (WEBP, "WebP"),
         (PNG, "PNG"),
     ]
+
+
+ALLOWED_ICON_THUMBNAIL_FORMATS = {IconThumbnailFormat.WEBP, IconThumbnailFormat.PNG}

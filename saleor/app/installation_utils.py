@@ -1,3 +1,5 @@
+import uuid
+
 import requests
 from django.conf import settings
 from django.contrib.sites.models import Site
@@ -79,6 +81,7 @@ def install_app(app_installation: AppInstallation, activate: bool = False):
         audience=manifest_data.get("audience"),
         is_installed=False,
         author=manifest_data.get("author"),
+        uuid=uuid.uuid4(),
         brand_logo_default=brand_logo_default,
     )
 

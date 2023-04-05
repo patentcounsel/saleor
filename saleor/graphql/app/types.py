@@ -1,5 +1,5 @@
 import base64
-from typing import List, Optional, Union
+from typing import List, Optional, Type, Union
 
 import graphene
 
@@ -15,6 +15,8 @@ from ...thumbnail import PIL_IDENTIFIER_TO_MIME_TYPE
 from ...thumbnail.utils import (
     ProcessedIconImage,
     get_icon_thumbnail_format,
+    get_image_or_proxy_url,
+    get_thumbnail_format,
     get_thumbnail_size,
 )
 from ..account.utils import is_owner_or_has_one_of_perms
@@ -43,7 +45,14 @@ from ..meta.types import ObjectWithMetadata
 from ..utils import format_permissions_for_display, get_user_or_app_from_context
 from ..webhook.enums import WebhookEventTypeAsyncEnum, WebhookEventTypeSyncEnum
 from ..webhook.types import Webhook
-from .dataloaders import AppByIdLoader, AppExtensionByAppIdLoader, app_promise_callback
+from .dataloaders import (
+    AppByIdLoader,
+    AppExtensionByAppIdLoader,
+    DataLoader,
+    ThumbnailByAppIdSizeAndFormatLoader,
+    ThumbnailByAppInstallationIdSizeAndFormatLoader,
+    app_promise_callback,
+)
 from .enums import AppExtensionMountEnum, AppExtensionTargetEnum, AppTypeEnum
 from .resolvers import (
     resolve_access_token_for_app,
@@ -273,6 +282,40 @@ class AppBrandLogo(BaseObjectType):
     class Meta:
         doc_category = DOC_CATEGORY_APPS
 
+    @staticmethod
+    def resolve_default(
+        root: Union[models.App, models.AppInstallation],
+        info: ResolveInfo,
+        *,
+        size: Optional[int] = None,
+        format: Optional[str] = None,
+    ):
+        if not root.brand_logo_default or not root.uuid:
+            return None
+        if size == 0:
+            return build_absolute_uri(root.brand_logo_default.url)
+
+        format = get_thumbnail_format(format)
+        selected_size = get_thumbnail_size(size)
+
+        object_type = "App"
+        dataloader: Type[DataLoader] = ThumbnailByAppIdSizeAndFormatLoader
+        if isinstance(root, models.AppInstallation):
+            object_type = "AppInstallation"
+            dataloader = ThumbnailByAppInstallationIdSizeAndFormatLoader
+
+        def _resolve_avatar(thumbnail):
+            url = get_image_or_proxy_url(
+                thumbnail, str(root.uuid), object_type, selected_size, format
+            )
+            return build_absolute_uri(url)
+
+        return (
+            dataloader(info.context)
+            .load((root.id, selected_size, format))
+            .then(_resolve_avatar)
+        )
+
 
 class AppBrand(BaseObjectType):
     logo = graphene.Field(AppBrandLogo, required=True)
@@ -280,6 +323,10 @@ class AppBrand(BaseObjectType):
     class Meta:
         description = "Represents the app's brand data."
         doc_category = DOC_CATEGORY_APPS
+
+    @staticmethod
+    def resolve_logo(root, _info: ResolveInfo):
+        return root
 
 
 class AppManifestBrand(AppBrand):
@@ -500,12 +547,7 @@ class App(ModelObjectType[models.App]):
 
     @staticmethod
     def resolve_brand(root: models.App, _info: ResolveInfo):
-        if root.brand_logo_default:
-            return {
-                "logo": {
-                    "default": build_absolute_uri(root.brand_logo_default.url),
-                }
-            }
+        return root
 
 
 class AppCountableConnection(CountableConnection):
@@ -530,8 +572,4 @@ class AppInstallation(ModelObjectType[models.AppInstallation]):
     @staticmethod
     def resolve_brand(root: models.AppInstallation, _info: ResolveInfo):
         if root.brand_logo_default:
-            return {
-                "logo": {
-                    "default": build_absolute_uri(root.brand_logo_default.url),
-                }
-            }
+            return root

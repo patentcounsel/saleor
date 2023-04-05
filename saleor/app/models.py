@@ -60,6 +60,7 @@ class App(ModelWithMetadata):
     audience = models.CharField(blank=True, null=True, max_length=256)
     is_installed = models.BooleanField(default=True)
     author = models.CharField(blank=True, null=True, max_length=60)
+    uuid = models.UUIDField(null=True, unique=True)
     brand_logo_default = models.ImageField(upload_to="app-logos", blank=True, null=True)
     objects = AppManager()
 
@@ -169,6 +170,7 @@ class AppInstallation(Job):
         related_name="app_installation_set",
         related_query_name="app_installation",
     )
+    uuid = models.UUIDField(null=True, unique=True)
 
     def set_message(self, message: str, truncate=True):
         if truncate:
