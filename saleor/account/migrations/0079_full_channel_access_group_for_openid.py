@@ -12,7 +12,7 @@ BATCH_SIZE = 5000
 
 
 def create_full_channel_access_group_for_openid(apps, schema_editor):
-    group_name = "OpenID default group"
+    group_name = "OpenID default group 2"
     User = apps.get_model("account", "User")
     Group = apps.get_model("account", "Group")
 
@@ -56,10 +56,28 @@ def create_full_channel_access_group_task(User, Group, group_name):
     users = User.objects.filter(
         Q(is_staff=True) & ~Exists(group_users.filter(user_id=OuterRef("id")))
     ).order_by("-pk")
-    user_ids = users.values_list("pk", flat=True)[:BATCH_SIZE]
-    if user_ids:
-        full_channel_access_group.user_set.add(*user_ids)
-        create_full_channel_access_group_task(User, Group, group_name)
+    for user_ids in queryset_in_batches(users):
+        if user_ids:
+            full_channel_access_group.user_set.add(*user_ids)
+
+
+def queryset_in_batches(queryset):
+    """Slice a queryset into batches.
+
+    Input queryset should be sorted be pk.
+    """
+    start_pk = 0
+
+    while True:
+        qs = queryset.order_by("pk").filter(pk__gt=start_pk)[:BATCH_SIZE]
+        pks = list(qs.values_list("pk", flat=True))
+
+        if not pks:
+            break
+
+        yield pks
+
+        start_pk = pks[-1]
 
 
 class Migration(migrations.Migration):
